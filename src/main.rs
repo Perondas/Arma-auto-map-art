@@ -249,6 +249,9 @@ fn main() {
     let mut pause_time = 0;
     let mut draw_time = 0;
 
+    let mut last_x = 0.0;
+    let mut last_y = 0.0;
+
     for poly in polygons {
         if poly.len() < 10 {
             continue;
@@ -262,11 +265,16 @@ fn main() {
             line.push_str(&format!("    MouseMove, {x}, {y}\n", x = x, y = y));
             draw_time += 15;
             if !md {
-                line.push_str(&format!("    Sleep, {}\n", pause));
+                if ((last_x - x).abs() + (last_y - y).abs()) < 15.0 {
+                    line.push_str(&format!("    Sleep, {}\n", pause));
+                    pause_time += pause;
+                }
+
                 line.push_str("    Send {lbutton down}\n");
-                pause_time += pause;
                 md = true;
             }
+            last_x = x;
+            last_y = y;
         }
         line.push_str("    Send {Ctrl up}\n");
         line.push_str("    Send {LButton up}\n");
