@@ -1,7 +1,9 @@
 use clap::*;
+use rand::prelude::SliceRandom;
 use std::fs;
 use std::path::Path;
 use svg2polylines::*;
+use rand::*;
 
 fn main() {
     let matches = App::new("svg_to_ahk")
@@ -178,7 +180,7 @@ fn main() {
         }
     };
 
-    let polygons = match parse(&content, grain) {
+    let mut polygons = match parse(&content, grain) {
         Ok(p) => p,
         Err(m) => {
             println!("Failed to parse svg");
@@ -252,10 +254,18 @@ fn main() {
     let mut last_x = 0.0;
     let mut last_y = 0.0;
 
+
+    polygons.shuffle(&mut thread_rng());
+
     for poly in polygons {
-        if poly.len() < 10 {
+        if poly.len() < 10
+            && ((poly[0].x - poly[poly.len() - 1].x).abs()
+                + (poly[0].y - poly[poly.len() - 1].y).abs())
+                < 20.0
+        {
             continue;
         }
+
         let mut line = String::from("    Send {Ctrl down}\n");
 
         let mut md = false;
@@ -265,7 +275,7 @@ fn main() {
             line.push_str(&format!("    MouseMove, {x}, {y}\n", x = x, y = y));
             draw_time += 15;
             if !md {
-                if ((last_x - x).abs() + (last_y - y).abs()) < 15.0 {
+                if ((last_x - x).abs() + (last_y - y).abs()) < 50.0 {
                     line.push_str(&format!("    Sleep, {}\n", pause));
                     pause_time += pause;
                 }
@@ -276,8 +286,10 @@ fn main() {
             last_x = x;
             last_y = y;
         }
+        draw_time += 50;
         line.push_str("    Send {Ctrl up}\n");
         line.push_str("    Send {LButton up}\n");
+        line.push_str("    Sleep, 50\n");
         line.push('\n');
         code.push_str(&line);
     }
