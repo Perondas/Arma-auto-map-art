@@ -20,8 +20,7 @@ fn main() {
                 .short("d")
                 .takes_value(true)
                 .value_name("DESTINATION PATH")
-                .help("Path to the destination file")
-                .default_value("same as source"),
+                .help("Path to the destination file"),
         )
         .arg(
             Arg::with_name("scale")
