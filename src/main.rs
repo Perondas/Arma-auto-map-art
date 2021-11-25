@@ -243,6 +243,7 @@ fn main() {
                 .partial_cmp(&(b1.x + b1.y).abs())
                 .unwrap()
         });
+        polygons.clear();
         for _ in 0..c.len() / 2 {
             let a = c.remove(0);
             let b = c.remove(c.len() / 2);
