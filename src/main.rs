@@ -1,9 +1,7 @@
 use clap::*;
-use rand::prelude::SliceRandom;
 use std::fs;
 use std::path::Path;
 use svg2polylines::*;
-use rand::*;
 
 fn main() {
     let matches = App::new("svg_to_ahk")
@@ -56,6 +54,8 @@ fn main() {
                 .takes_value(true)
                 .value_name("STARTING INTERVAL"),
         )
+        .arg(Arg::with_name("test").short("t"))
+        .arg(Arg::with_name("filter").short("f"))
         .get_matches();
 
     let source;
@@ -66,6 +66,12 @@ fn main() {
     let y_offset;
     let pause;
     let interval;
+    let filter;
+    let test;
+
+    filter = matches.is_present("filter");
+
+    test = matches.is_present("test");
 
     interval = match matches.value_of("startingInterval") {
         Some(i) => match i.parse::<u32>() {
@@ -180,24 +186,52 @@ fn main() {
         }
     };
 
-    let mut polygons = match parse(&content, grain) {
-        Ok(p) => p,
-        Err(m) => {
-            println!("Failed to parse svg");
-            println!("{}", m);
-            return;
-        }
-    };
+    let mut polygons;
 
-    let mut code =
-        String::from("#SingleInstance Force\nCoordMode, Mouse, Screen\nSetDefaultMouseSpeed, 1\n");
-    code.push_str("Escape::\nExitApp\nReturn\n^b::Box()\n");
+    if test {
+        polygons = gen_test_polygons();
+        println!("In test mode!");
+    } else {
+        polygons = match parse(&content, grain) {
+            Ok(p) => p,
+            Err(m) => {
+                println!("Failed to parse svg");
+                println!("{}", m);
+                return;
+            }
+        };
+
+        let mut c = polygons.clone();
+        c.sort_by(|a, b| {
+            let a1 = a.last().unwrap();
+            let b1 = b.first().unwrap();
+            (a1.x + a1.y)
+                .abs()
+                .partial_cmp(&(b1.x + b1.y).abs())
+                .unwrap()
+        });
+        let mut p = Vec::new();
+        for _ in 0..c.len() / 2 {
+            let a = c.remove(0);
+            let b = c.remove(c.len() / 2);
+            p.push(a);
+            p.push(b);
+        }
+        if !c.is_empty() {
+            polygons.push(c.remove(0));
+        }
+    }
+
+    let mut code = AhkCode::new(true, 1);
+    let mut code = code.add_exit();
+
     let max_x = polygons
         .iter()
         .flatten()
         .map(|p| (p.x * scale) + x_offset)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
+
     let max_y = polygons
         .iter()
         .flatten()
@@ -219,34 +253,20 @@ fn main() {
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
 
-    code.push_str(&format!(
-        "Box() {{\n    Sleep, {}\n    Send {{Ctrl down}}\n",
-        interval
-    ));
-    code.push_str(&format!("    MouseMove, {x}, {y}\n", x = min_x, y = min_y));
-    code.push_str("    Sleep 200\n");
+    code = code.add_box(interval, (min_x, min_y), (max_x, max_y));
 
-    code.push_str("    Send {lbutton down}\n");
-
-    code.push_str(&format!("    MouseMove, {x}, {y}\n", x = min_x, y = max_y));
-    code.push_str("    Sleep 200\n");
-
-    code.push_str(&format!("    MouseMove, {x}, {y}\n", x = max_x, y = max_y));
-    code.push_str("    Sleep 200\n");
-
-    code.push_str(&format!("    MouseMove, {x}, {y}\n", x = max_x, y = min_y));
-    code.push_str("    Sleep 200\n");
-
-    code.push_str(&format!("    MouseMove, {x}, {y}\n", x = min_x, y = min_y));
-    code.push_str("    Sleep 200\n");
-
-    code.push_str("    Send {Ctrl up}\n    Send {lbutton up}\n    return\n}\n");
-
-    code.push_str("^z::\nToggle := !Toggle\n");
-    code.push_str(&format!(
-        "Loop\n{{\n    If (!Toggle)\n        Break\n    Sleep, {}\n",
-        interval
-    ));
+    code.code.push(CodeEmmitals::EmmitLine("^z::".to_string()));
+    code.code
+        .push(CodeEmmitals::EmmitLine("Toggle := !Toggle".to_string()));
+    code.code.push(CodeEmmitals::EmmitLine("Loop".to_string()));
+    code.code.push(CodeEmmitals::EmmitLine("{".to_string()));
+    code.code.push(CodeEmmitals::TabIn);
+    code.code
+        .push(CodeEmmitals::EmmitLine("If (!Toggle)".to_string()));
+    code.code.push(CodeEmmitals::TabIn);
+    code.code.push(CodeEmmitals::EmmitLine("Break".to_string()));
+    code.code.push(CodeEmmitals::TabOut);
+    code.code.push(CodeEmmitals::Sleep(interval));
 
     let mut pause_time = 0;
     let mut draw_time = 0;
@@ -254,51 +274,58 @@ fn main() {
     let mut last_x = 0.0;
     let mut last_y = 0.0;
 
-
-    polygons.shuffle(&mut thread_rng());
-
     for poly in polygons {
-        if poly.len() < 10
+        if filter
+            && poly.len() < 10
             && ((poly[0].x - poly[poly.len() - 1].x).abs()
                 + (poly[0].y - poly[poly.len() - 1].y).abs())
                 < 20.0
         {
             continue;
         }
-
-        let mut line = String::from("    Send {Ctrl down}\n");
+        code.code.push(CodeEmmitals::CtrlDown);
 
         let mut md = false;
         for l in poly {
             let x = (l.x * scale) + x_offset;
             let y = (l.y * scale) + y_offset;
-            line.push_str(&format!("    MouseMove, {x}, {y}\n", x = x, y = y));
+            code.code.push(CodeEmmitals::MouseMove(x, y));
             draw_time += 15;
             if !md {
-                if ((last_x - x).abs() + (last_y - y).abs()) < 50.0 {
-                    line.push_str(&format!("    Sleep, {}\n", pause));
+                if (last_x - x).abs() + (last_y - y).abs() < 250.0 {
+                    code.code.push(CodeEmmitals::Sleep(pause));
                     pause_time += pause;
                 }
 
-                line.push_str("    Send {lbutton down}\n");
+                code.code.push(CodeEmmitals::MouseDown);
                 md = true;
             }
             last_x = x;
             last_y = y;
         }
-        draw_time += 50;
-        line.push_str("    Send {Ctrl up}\n");
-        line.push_str("    Send {LButton up}\n");
-        line.push_str("    Sleep, 50\n");
-        line.push('\n');
-        code.push_str(&line);
+        draw_time += 120;
+        code.code.push(CodeEmmitals::CtrlUp);
+        code.code.push(CodeEmmitals::MouseUp);
+        code.code.push(CodeEmmitals::Sleep(120));
+        code.code.push(CodeEmmitals::EmmitLine(String::new()));
     }
 
-    code.push_str("    Send {lbutton up}\n");
-    code.push_str("    Exit, 0\n");
-    code.push_str("}\n");
+    code.code.push(CodeEmmitals::MouseUp);
+    code.code
+        .push(CodeEmmitals::EmmitLine("Exit, 0".to_string()));
+    code.code.push(CodeEmmitals::TabOut);
+    code.code.push(CodeEmmitals::EmmitLine("}".to_string()));
 
-    fs::write(destination.clone(), code).unwrap();
+    let script = code.build();
+
+    match fs::write(destination.clone(), script) {
+        Ok(()) => (),
+        Err(e) => {
+            println!("Failed to save file!");
+            println!("Error: {}", e);
+            return;
+        }
+    }
 
     println!("Created file {}", destination);
     println!("Total pause time: {}ms", pause_time);
@@ -306,4 +333,155 @@ fn main() {
     print!("Canvas of size: ");
     print!("x: {}, ", max_x - min_x);
     println!("y: {}", max_y - min_y);
+}
+
+enum CodeEmmitals {
+    TabIn,
+    TabOut,
+    EmmitLine(String),
+    MouseMove(f64, f64),
+    Sleep(u32),
+    CtrlDown,
+    CtrlUp,
+    MouseDown,
+    MouseUp,
+}
+
+struct AhkCode {
+    code: Vec<CodeEmmitals>,
+}
+
+impl AhkCode {
+    pub fn new(force_single: bool, default_speed: i32) -> AhkCode {
+        let mut code = Vec::new();
+
+        if force_single {
+            code.push(CodeEmmitals::EmmitLine("#SingleInstance Force".to_string()));
+        }
+
+        code.push(CodeEmmitals::EmmitLine(
+            "CoordMode, Mouse, Screen".to_string(),
+        ));
+
+        if default_speed > 100 {
+            panic!("Speed was out of range!");
+        }
+
+        code.push(CodeEmmitals::EmmitLine(format!(
+            "SetDefaultMouseSpeed, {}",
+            default_speed
+        )));
+
+        AhkCode { code }
+    }
+
+    pub fn add_exit(&mut self) -> &mut AhkCode {
+        self.code
+            .push(CodeEmmitals::EmmitLine("Escape::".to_string()));
+        self.code
+            .push(CodeEmmitals::EmmitLine("ExitApp".to_string()));
+        self.code
+            .push(CodeEmmitals::EmmitLine("Return".to_string()));
+        self
+    }
+
+    pub fn add_box(&mut self, pause: u32, min: (f64, f64), max: (f64, f64)) -> &mut AhkCode {
+        self.code
+            .push(CodeEmmitals::EmmitLine("^b::Box()".to_string()));
+        self.code
+            .push(CodeEmmitals::EmmitLine("Box() {".to_string()));
+        self.code.push(CodeEmmitals::TabIn);
+
+        self.code.push(CodeEmmitals::Sleep(pause));
+        self.code.push(CodeEmmitals::CtrlDown);
+
+        self.code.push(CodeEmmitals::MouseMove(min.0, min.1));
+        self.code.push(CodeEmmitals::Sleep(200));
+
+        self.code.push(CodeEmmitals::MouseDown);
+
+        self.code.push(CodeEmmitals::MouseMove(min.0, max.1));
+        self.code.push(CodeEmmitals::Sleep(200));
+
+        self.code.push(CodeEmmitals::MouseMove(max.0, max.1));
+        self.code.push(CodeEmmitals::Sleep(200));
+
+        self.code.push(CodeEmmitals::MouseMove(max.0, min.1));
+        self.code.push(CodeEmmitals::Sleep(200));
+
+        self.code.push(CodeEmmitals::MouseMove(min.0, min.1));
+        self.code.push(CodeEmmitals::Sleep(200));
+
+        self.code.push(CodeEmmitals::CtrlUp);
+        self.code.push(CodeEmmitals::MouseUp);
+        self.code
+            .push(CodeEmmitals::EmmitLine("return".to_string()));
+        self.code.push(CodeEmmitals::TabOut);
+
+        self.code.push(CodeEmmitals::EmmitLine("}".to_string()));
+
+        self
+    }
+
+    pub fn build(&self) -> String {
+        let mut spaces = String::new();
+        let mut code = String::new();
+        for line in &self.code {
+            match line {
+                CodeEmmitals::TabIn => spaces.push_str("    "),
+                CodeEmmitals::TabOut => {
+                    for _ in 0..4 {
+                        spaces.pop();
+                    }
+                }
+                CodeEmmitals::EmmitLine(s) => {
+                    code.push_str(&format!("{p}{s}\n", s = s, p = spaces))
+                }
+                CodeEmmitals::MouseMove(x, y) => code.push_str(&format!(
+                    "{p}MouseMove, {x}, {y}\n",
+                    p = spaces,
+                    x = x,
+                    y = y
+                )),
+                CodeEmmitals::Sleep(t) => {
+                    code.push_str(&format!("{p}Sleep, {t}\n", t = t, p = spaces))
+                }
+                CodeEmmitals::CtrlDown => {
+                    code.push_str(&format!("{p}Send {{Ctrl down}}\n", p = spaces))
+                }
+                CodeEmmitals::CtrlUp => {
+                    code.push_str(&format!("{p}Send {{Ctrl up}}\n", p = spaces))
+                }
+                CodeEmmitals::MouseUp => {
+                    code.push_str(&format!("{p}Send {{lbutton up}}\n", p = spaces))
+                }
+                CodeEmmitals::MouseDown => {
+                    code.push_str(&format!("{p}Send {{lbutton down}}\n", p = spaces))
+                }
+            }
+        }
+        code
+    }
+}
+
+fn gen_test_polygons() -> Vec<Vec<CoordinatePair>> {
+    let mut result = Vec::new();
+    for i in 1..50 {
+        let mut line = Vec::new();
+
+        let start = CoordinatePair {
+            x: (i - 1 + i) as f64 / 2.0,
+            y: 0.0,
+        };
+
+        let end = CoordinatePair {
+            x: (i - 1 + i) as f64 / 2.0,
+            y: 1.0,
+        };
+        line.push(start);
+        line.push(end);
+        result.push(line);
+    }
+
+    result
 }
