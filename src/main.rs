@@ -243,12 +243,11 @@ fn main() {
                 .partial_cmp(&(b1.x + b1.y).abs())
                 .unwrap()
         });
-        let mut p = Vec::new();
         for _ in 0..c.len() / 2 {
             let a = c.remove(0);
             let b = c.remove(c.len() / 2);
-            p.push(a);
-            p.push(b);
+            polygons.push(a);
+            polygons.push(b);
         }
         if !c.is_empty() {
             polygons.push(c.remove(0));
@@ -325,7 +324,7 @@ fn main() {
             code.code.push(CodeEmmitals::MouseMove(x, y));
             draw_time += 15;
             if !md {
-                if (last_x - x).abs() + (last_y - y).abs() < 250.0 {
+                if (last_x - x).abs() + (last_y - y).abs() < 60.0 {
                     code.code.push(CodeEmmitals::Sleep(pause));
                     pause_time += pause;
                 }
