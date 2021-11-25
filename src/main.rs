@@ -4,58 +4,85 @@ use std::path::Path;
 use svg2polylines::*;
 
 fn main() {
-    let matches = App::new("svg_to_ahk")
-        .author("Perondas")
+    let matches = App::new("Arma 3 auto map art generator")
+        .author("Perondas <Pperondas@gmail.com>")
+        .version("0.1.3")
+        .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
             Arg::with_name("source")
                 .short("s")
                 .takes_value(true)
-                .value_name("SOURCE FILE"),
+                .value_name("SOURCE FILE")
+                .help("Path to the source svg file"),
         )
         .arg(
             Arg::with_name("destination")
                 .short("d")
                 .takes_value(true)
-                .value_name("DESTINATION PATH"),
+                .value_name("DESTINATION PATH")
+                .help("Path to the destination file")
+                .default_value("same as source"),
         )
         .arg(
             Arg::with_name("scale")
                 .short("c")
                 .takes_value(true)
-                .value_name("SCALE"),
+                .value_name("SCALE")
+                .help("Sets the scale of the drawing")
+                .default_value("1.0"),
         )
         .arg(
             Arg::with_name("grain")
                 .short("g")
                 .takes_value(true)
-                .value_name("GRAIN LEVEL"),
+                .value_name("GRAIN LEVEL")
+                .help("Sets how fine to draw. Higher values make it more course")
+                .default_value("0.15"),
         )
         .arg(
             Arg::with_name("xOffset")
                 .short("x")
                 .takes_value(true)
-                .value_name("X OFFSET"),
+                .value_name("X OFFSET")
+                .help("Drawing offset on x axis")
+                .default_value("0"),
         )
         .arg(
             Arg::with_name("yOffset")
                 .short("y")
                 .takes_value(true)
-                .value_name("Y OFFSET"),
+                .value_name("Y OFFSET")
+                .help("Drawing offset on y axis")
+                .default_value("0"),
         )
         .arg(
             Arg::with_name("pause")
                 .short("p")
                 .takes_value(true)
-                .value_name("PAUSE DURATION"),
+                .value_name("PAUSE DURATION")
+                .help("Time to wait in between drawing 2 close lines to prevent marker dialogue")
+                .default_value("750"),
         )
         .arg(
             Arg::with_name("startingInterval")
                 .short("i")
                 .takes_value(true)
-                .value_name("STARTING INTERVAL"),
+                .value_name("STARTING INTERVAL")
+                .help("The time between pressing a key and the drawing process starting")
+                .default_value("3000"),
         )
-        .arg(Arg::with_name("test").short("t"))
-        .arg(Arg::with_name("filter").short("f"))
+        .arg(
+            Arg::with_name("test")
+                .short("t")
+                .long("test")
+                .help("Outputs a test file"),
+        )
+        .arg(
+            Arg::with_name("filter")
+                .short("f")
+                .long("filter")
+                .help("Filters out small specks"),
+        )
         .get_matches();
 
     let source;
@@ -100,14 +127,18 @@ fn main() {
     match matches.value_of("source") {
         Some(s) => source = s,
         None => {
-            println!("No source file provided");
-            return;
+            if !test {
+                println!("No source file provided");
+                return;
+            } else {
+                source = "test.svg"
+            }
         }
     }
 
     let s_path = Path::new(source);
 
-    if !s_path.exists() || !s_path.is_file() {
+    if !test && (!s_path.exists() || !s_path.is_file()) {
         println!("Could not find {}", source);
         return;
     }
@@ -180,9 +211,12 @@ fn main() {
     let content = match fs::read_to_string(s_path) {
         Ok(c) => c,
         Err(m) => {
-            println!("Failed to read file");
-            println!("{}", m);
-            return;
+            if !test {
+                println!("Failed to read file");
+                println!("{}", m);
+                return;
+            }
+            String::new()
         }
     };
 
