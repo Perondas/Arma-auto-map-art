@@ -233,8 +233,21 @@ fn main() {
                 return;
             }
         };
+        
+        let mut filtered_poly = Vec::new();
+        for poly in polygons {
+            if filter
+            && poly.len() < 10
+            && ((poly[0].x - poly[poly.len() - 1].x).abs()
+                + (poly[0].y - poly[poly.len() - 1].y).abs())
+                < 20.0
+            {
+                continue;
+            }
+            filtered_poly.push(poly);
+        }
 
-        let mut c = polygons.clone();
+        let mut c = filtered_poly.clone();
         c.sort_by(|a, b| {
             let a1 = a.last().unwrap();
             let b1 = b.first().unwrap();
@@ -243,7 +256,9 @@ fn main() {
                 .partial_cmp(&(b1.x + b1.y).abs())
                 .unwrap()
         });
-        polygons.clear();
+        
+        polygons = Vec::with_capacity(c.len());
+
         for _ in 0..c.len() / 2 {
             let a = c.remove(0);
             let b = c.remove(c.len() / 2);
@@ -252,8 +267,11 @@ fn main() {
         }
         if !c.is_empty() {
             polygons.push(c.remove(0));
-        }
+        }         
     }
+
+    let line_count = polygons.len();
+    let longest_line = polygons.iter().map(|p| p.len()).max().unwrap();
 
     let mut code = AhkCode::new(true, 1);
     let mut code = code.add_exit();
@@ -308,14 +326,7 @@ fn main() {
     let mut last_y = 0.0;
 
     for poly in polygons {
-        if filter
-            && poly.len() < 10
-            && ((poly[0].x - poly[poly.len() - 1].x).abs()
-                + (poly[0].y - poly[poly.len() - 1].y).abs())
-                < 20.0
-        {
-            continue;
-        }
+        
         code.code.push(CodeEmmitals::CtrlDown);
 
         let mut md = false;
@@ -325,21 +336,23 @@ fn main() {
             code.code.push(CodeEmmitals::MouseMove(x, y));
             draw_time += 15;
             if !md {
-                if (last_x - x).abs() + (last_y - y).abs() < 60.0 {
+                if (last_x - x).abs() + (last_y - y).abs() < 150.0 {
                     code.code.push(CodeEmmitals::Sleep(pause));
                     pause_time += pause;
                 }
-
+                code.code.push(CodeEmmitals::Sleep(150));
                 code.code.push(CodeEmmitals::MouseDown);
+                code.code.push(CodeEmmitals::Sleep(150));
+                draw_time += 300;
                 md = true;
             }
             last_x = x;
             last_y = y;
         }
-        draw_time += 120;
+        draw_time += 200;
         code.code.push(CodeEmmitals::CtrlUp);
         code.code.push(CodeEmmitals::MouseUp);
-        code.code.push(CodeEmmitals::Sleep(120));
+        code.code.push(CodeEmmitals::Sleep(200));
         code.code.push(CodeEmmitals::EmmitLine(String::new()));
     }
 
@@ -360,7 +373,10 @@ fn main() {
         }
     }
 
+    println!();
     println!("Created file {}", destination);
+    println!("Total line count: {}", line_count);
+    println!("Longest line: {}", longest_line);
     println!("Total pause time: {}ms", pause_time);
     println!("Total expected time: {}ms", pause_time + draw_time);
     print!("Canvas of size: ");
