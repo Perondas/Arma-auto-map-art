@@ -1,12 +1,12 @@
 [package]
 name = "svg_to_ahk"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Perondas"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-svg2polylines = "0.6.0"
+svg2polylines = {git = "https://github.com/Perondas/svg2polylines.git"}
 clap = "2.33.3"
 rand = "0.8.4"

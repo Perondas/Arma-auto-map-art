@@ -201,8 +201,7 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 [[package]]
 name = "svg2polylines"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cea09f18b5eff9a9e51d1c6261d6e3348f8377ff32cef7e39707c3a42c8b590"
+source = "git+https://github.com/Perondas/svg2polylines.git#429df426914b6a289cc68e21783cc4dd1f7ed5c4"
 dependencies = [
  "log",
  "lyon_geom",
@@ -212,7 +211,7 @@ dependencies = [
 
 [[package]]
 name = "svg_to_ahk"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "clap",
  "rand",

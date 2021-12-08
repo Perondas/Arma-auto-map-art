@@ -82,6 +82,11 @@ fn main() {
                 .long("filter")
                 .help("Filters out small specks"),
         )
+        .arg(
+            Arg::with_name("on server")
+                .short("o")
+                .help("Set this flag if you are going ot be drawing on a server"),
+        )
         .get_matches();
 
     let source;
@@ -94,6 +99,9 @@ fn main() {
     let interval;
     let filter;
     let test;
+    let server;
+
+    server = matches.is_present("on server");
 
     filter = matches.is_present("filter");
 
@@ -128,7 +136,7 @@ fn main() {
         None => {
             if !test {
                 println!("No source file provided");
-                return;
+                source = "E:/Git/Arma-auto-map-art/arcs.svg";
             } else {
                 source = "test.svg"
             }
@@ -233,14 +241,14 @@ fn main() {
                 return;
             }
         };
-        
+
         let mut filtered_poly = Vec::new();
         for poly in polygons {
             if filter
-            && poly.len() < 10
-            && ((poly[0].x - poly[poly.len() - 1].x).abs()
-                + (poly[0].y - poly[poly.len() - 1].y).abs())
-                < 20.0
+                && poly.len() < 10
+                && ((poly[0].x - poly[poly.len() - 1].x).abs()
+                    + (poly[0].y - poly[poly.len() - 1].y).abs())
+                    < 20.0
             {
                 continue;
             }
@@ -256,7 +264,7 @@ fn main() {
                 .partial_cmp(&(b1.x + b1.y).abs())
                 .unwrap()
         });
-        
+
         polygons = Vec::with_capacity(c.len());
 
         for _ in 0..c.len() / 2 {
@@ -267,7 +275,7 @@ fn main() {
         }
         if !c.is_empty() {
             polygons.push(c.remove(0));
-        }         
+        }
     }
 
     let line_count = polygons.len();
@@ -326,7 +334,6 @@ fn main() {
     let mut last_y = 0.0;
 
     for poly in polygons {
-        
         code.code.push(CodeEmmitals::CtrlDown);
 
         let mut md = false;
@@ -336,23 +343,32 @@ fn main() {
             code.code.push(CodeEmmitals::MouseMove(x, y));
             draw_time += 15;
             if !md {
-                if (last_x - x).abs() + (last_y - y).abs() < 150.0 {
+                if (last_x - x).abs() + (last_y - y).abs() < 50.0 {
                     code.code.push(CodeEmmitals::Sleep(pause));
                     pause_time += pause;
                 }
-                code.code.push(CodeEmmitals::Sleep(150));
-                code.code.push(CodeEmmitals::MouseDown);
-                code.code.push(CodeEmmitals::Sleep(150));
-                draw_time += 300;
+                if server {
+                    code.code.push(CodeEmmitals::Sleep(150));
+                    code.code.push(CodeEmmitals::MouseDown);
+                    code.code.push(CodeEmmitals::Sleep(150));
+                    draw_time += 300;
+                } else {
+                    code.code.push(CodeEmmitals::MouseDown);
+                }
+
                 md = true;
             }
             last_x = x;
             last_y = y;
         }
-        draw_time += 200;
+
         code.code.push(CodeEmmitals::CtrlUp);
         code.code.push(CodeEmmitals::MouseUp);
-        code.code.push(CodeEmmitals::Sleep(200));
+        if server {
+            pause_time += 200;
+            code.code.push(CodeEmmitals::Sleep(200));
+        }
+
         code.code.push(CodeEmmitals::EmmitLine(String::new()));
     }
 
