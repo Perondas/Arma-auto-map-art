@@ -1,12 +1,13 @@
 use clap::*;
 use std::fs;
 use std::path::Path;
+use std::time::Duration;
 use svg2polylines::*;
 
 fn main() {
     let matches = App::new("Arma 3 auto map art generator")
         .author("Perondas <Pperondas@gmail.com>")
-        .version("0.1.3")
+        .version("0.1.4")
         .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
             Arg::with_name("source")
@@ -327,8 +328,8 @@ fn main() {
     code.code.push(CodeEmmitals::TabOut);
     code.code.push(CodeEmmitals::Sleep(interval));
 
-    let mut pause_time = 0;
-    let mut draw_time = 0;
+    let mut pause_time = Duration::new(0, 0);
+    let mut draw_time = Duration::new(0, 0);
 
     let mut last_x = 0.0;
     let mut last_y = 0.0;
@@ -341,17 +342,17 @@ fn main() {
             let x = (l.x * scale) + x_offset;
             let y = (l.y * scale) + y_offset;
             code.code.push(CodeEmmitals::MouseMove(x, y));
-            draw_time += 15;
+            draw_time += Duration::from_nanos(2810000);
             if !md {
                 if (last_x - x).abs() + (last_y - y).abs() < 50.0 {
                     code.code.push(CodeEmmitals::Sleep(pause));
-                    pause_time += pause;
+                    pause_time += Duration::from_millis(pause as u64);
                 }
                 if server {
                     code.code.push(CodeEmmitals::Sleep(150));
                     code.code.push(CodeEmmitals::MouseDown);
                     code.code.push(CodeEmmitals::Sleep(150));
-                    draw_time += 300;
+                    pause_time += Duration::from_millis(300);
                 } else {
                     code.code.push(CodeEmmitals::MouseDown);
                 }
@@ -365,8 +366,11 @@ fn main() {
         code.code.push(CodeEmmitals::CtrlUp);
         code.code.push(CodeEmmitals::MouseUp);
         if server {
-            pause_time += 200;
+            pause_time += Duration::from_millis(200);
             code.code.push(CodeEmmitals::Sleep(200));
+        } else {
+            pause_time += Duration::from_millis(20);
+            code.code.push(CodeEmmitals::Sleep(20));
         }
 
         code.code.push(CodeEmmitals::EmmitLine(String::new()));
@@ -393,8 +397,12 @@ fn main() {
     println!("Created file {}", destination);
     println!("Total line count: {}", line_count);
     println!("Longest line: {}", longest_line);
-    println!("Total pause time: {}ms", pause_time);
-    println!("Total expected time: {}ms", pause_time + draw_time);
+    println!("Total pause time: {} seconds", pause_time.as_secs_f64());
+    println!("Total draw time: {:.2} seconds", (draw_time).as_secs_f64());
+    println!(
+        "Total expected time: {:.2} minutes",
+        (pause_time + draw_time).as_secs_f64() / 60.0
+    );
     print!("Canvas of size: ");
     print!("x: {}, ", max_x - min_x);
     println!("y: {}", max_y - min_y);
