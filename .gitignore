@@ -1,6 +1,6 @@
 /target
+/scripts
 
-*.jpg
-*.png
+
 *.svg
 *.ahk
