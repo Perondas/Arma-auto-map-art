@@ -7,7 +7,7 @@ To build you will need the rust compiler or preferably cargo. Get it [here](http
 To run you will need AutoHotkey. Get it [here](https://www.autohotkey.com/)
 
 ## Description
-This application generates Auto Hot Key scripts from .svg files to draw
+This application generates AutoHotkey scripts from .svg files to draw
 on the Arma 3 in game map. 
 
 ## Usage
