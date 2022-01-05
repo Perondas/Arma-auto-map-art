@@ -7,7 +7,7 @@ use svg2polylines::*;
 fn main() {
     let matches = App::new("Arma 3 auto map art generator")
         .author("Perondas <Pperondas@gmail.com>")
-        .version("0.1.4")
+        .version("0.1.5")
         .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
             Arg::with_name("source")
@@ -98,15 +98,12 @@ fn main() {
     let y_offset;
     let pause;
     let interval;
-    let filter;
-    let test;
-    let server;
 
-    server = matches.is_present("on server");
+    let server = matches.is_present("on server");
 
-    filter = matches.is_present("filter");
+    let filter = matches.is_present("filter");
 
-    test = matches.is_present("test");
+    let test = matches.is_present("test");
 
     interval = match matches.value_of("startingInterval") {
         Some(i) => match i.parse::<u32>() {
@@ -234,6 +231,8 @@ fn main() {
         polygons = gen_test_polygons();
         println!("In test mode!");
     } else {
+        // Parses the svg to lines
+        // The parse function does not return a Err if the file was not a svg. It will return a empty vector.
         polygons = match parse(&content, grain) {
             Ok(p) => p,
             Err(m) => {
@@ -243,6 +242,7 @@ fn main() {
             }
         };
 
+        // Filters out small lines
         let mut filtered_poly = Vec::new();
         for poly in polygons {
             if filter
@@ -256,8 +256,8 @@ fn main() {
             filtered_poly.push(poly);
         }
 
-        let mut c = filtered_poly.clone();
-        c.sort_by(|a, b| {
+        // Sorts the polygons by their manhattan distance from the origin
+        filtered_poly.sort_by(|a, b| {
             let a1 = a.last().unwrap();
             let b1 = b.first().unwrap();
             (a1.x + a1.y)
@@ -266,24 +266,37 @@ fn main() {
                 .unwrap()
         });
 
-        polygons = Vec::with_capacity(c.len());
+        polygons = Vec::with_capacity(filtered_poly.len());
 
-        for _ in 0..c.len() / 2 {
-            let a = c.remove(0);
-            let b = c.remove(c.len() / 2);
+        // For n polygons at position kx they will be sorted k1, k1 + n/2, k2, k2 + n/2, ..., k(n/2) - 1, k(n/2) + n/2;
+        // This makes sure that no 2 polygons are adjacent (hopefully)
+        for _ in 0..filtered_poly.len() / 2 {
+            let a = filtered_poly.remove(0);
+            let b = filtered_poly.remove(filtered_poly.len() / 2);
             polygons.push(a);
             polygons.push(b);
         }
-        if !c.is_empty() {
-            polygons.push(c.remove(0));
+        if !filtered_poly.is_empty() {
+            polygons.push(filtered_poly.remove(0));
         }
     }
 
     let line_count = polygons.len();
+
+    if line_count == 0 {
+        // If vector empty, then the file must have had a issue. Probably not a svg file.
+        println!("Failed to parse file! Please make sure to select a valid svg file!");
+        return;
+    }
+
     let longest_line = polygons.iter().map(|p| p.len()).max().unwrap();
 
     let mut code = AhkCode::new(true, 1);
+
+    // Adds a exit keybind to the escape key
     let mut code = code.add_exit();
+
+    // Finds the max and min points in x and y
 
     let max_x = polygons
         .iter()
@@ -313,8 +326,10 @@ fn main() {
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
 
+    // Adds a bounding box to the ahk file
     code = code.add_box(interval, (min_x, min_y), (max_x, max_y));
 
+    // Adds the basic structure of the ahk script
     code.code.push(CodeEmmitals::EmmitLine("^z::".to_string()));
     code.code
         .push(CodeEmmitals::EmmitLine("Toggle := !Toggle".to_string()));
@@ -328,62 +343,77 @@ fn main() {
     code.code.push(CodeEmmitals::TabOut);
     code.code.push(CodeEmmitals::Sleep(interval));
 
-    let mut pause_time = Duration::new(0, 0);
-    let mut draw_time = Duration::new(0, 0);
-
     let mut last_x = 0.0;
     let mut last_y = 0.0;
 
+    let mut point_count = 0;
+
     for poly in polygons {
+        // For every polygon press Ctrl
+        point_count += poly.len();
         code.code.push(CodeEmmitals::CtrlDown);
 
+        // Mouse down flag
         let mut md = false;
         for l in poly {
+            // Calculate the absolute position of the target coordinates
             let x = (l.x * scale) + x_offset;
             let y = (l.y * scale) + y_offset;
+            // Move there
             code.code.push(CodeEmmitals::MouseMove(x, y));
-            draw_time += Duration::from_nanos(2810000);
+
             if !md {
+                // Mouse down on the first line
+                code.code.push(CodeEmmitals::Sleep(40));
                 if (last_x - x).abs() + (last_y - y).abs() < 50.0 {
+                    // Pause to avoid opening the marker dialog
                     code.code.push(CodeEmmitals::Sleep(pause));
-                    pause_time += Duration::from_millis(pause as u64);
                 }
                 if server {
+                    // Slowly lift mouse to avoid drawing unwanted lines
                     code.code.push(CodeEmmitals::Sleep(150));
                     code.code.push(CodeEmmitals::MouseDown);
                     code.code.push(CodeEmmitals::Sleep(150));
-                    pause_time += Duration::from_millis(300);
                 } else {
                     code.code.push(CodeEmmitals::MouseDown);
                 }
 
                 md = true;
             }
+
+            if (last_x - x).abs() + (last_y - y).abs() > 50.0 {
+                // Slow down drawing of straight lines
+                code.code.push(CodeEmmitals::Sleep(40));
+            }
+
             last_x = x;
             last_y = y;
         }
 
+        // End of polygon
         code.code.push(CodeEmmitals::CtrlUp);
         code.code.push(CodeEmmitals::MouseUp);
+        // Wait between polygons
         if server {
-            pause_time += Duration::from_millis(200);
             code.code.push(CodeEmmitals::Sleep(200));
         } else {
-            pause_time += Duration::from_millis(20);
-            code.code.push(CodeEmmitals::Sleep(20));
+            code.code.push(CodeEmmitals::Sleep(40));
         }
 
+        // Add a blank line for readability
         code.code.push(CodeEmmitals::EmmitLine(String::new()));
     }
 
-    code.code.push(CodeEmmitals::MouseUp);
+    // Kills the loop in the script once it is done, to avoid accidental re-starting
     code.code
         .push(CodeEmmitals::EmmitLine("Exit, 0".to_string()));
     code.code.push(CodeEmmitals::TabOut);
     code.code.push(CodeEmmitals::EmmitLine("}".to_string()));
 
-    let script = code.build();
+    // Builds the script and calculates total time spend drawing and all pauses summed up
+    let (script, draw_time, pause_time) = code.build();
 
+    // Save the file
     match fs::write(destination.clone(), script) {
         Ok(()) => (),
         Err(e) => {
@@ -393,9 +423,11 @@ fn main() {
         }
     }
 
+    // Print information about the saved file
     println!();
     println!("Created file {}", destination);
     println!("Total line count: {}", line_count);
+    println!("Total point count: {}", point_count);
     println!("Longest line: {}", longest_line);
     println!("Total pause time: {} seconds", pause_time.as_secs_f64());
     println!("Total draw time: {:.2} seconds", (draw_time).as_secs_f64());
@@ -404,8 +436,8 @@ fn main() {
         (pause_time + draw_time).as_secs_f64() / 60.0
     );
     print!("Canvas of size: ");
-    print!("x: {}, ", max_x - min_x);
-    println!("y: {}", max_y - min_y);
+    print!("x: {:.2}, ", max_x - min_x);
+    println!("y: {:.2}", max_y - min_y);
 }
 
 enum CodeEmmitals {
@@ -496,9 +528,11 @@ impl AhkCode {
         self
     }
 
-    pub fn build(&self) -> String {
+    pub fn build(&self) -> (String, Duration, Duration) {
         let mut spaces = String::new();
         let mut code = String::new();
+        let mut pause_time = Duration::new(0, 0);
+        let mut draw_time = Duration::new(0, 0);
         for line in &self.code {
             match line {
                 CodeEmmitals::TabIn => spaces.push_str("    "),
@@ -510,14 +544,18 @@ impl AhkCode {
                 CodeEmmitals::EmmitLine(s) => {
                     code.push_str(&format!("{p}{s}\n", s = s, p = spaces))
                 }
-                CodeEmmitals::MouseMove(x, y) => code.push_str(&format!(
-                    "{p}MouseMove, {x}, {y}\n",
-                    p = spaces,
-                    x = x,
-                    y = y
-                )),
+                CodeEmmitals::MouseMove(x, y) => {
+                    code.push_str(&format!(
+                        "{p}MouseMove, {x}, {y}\n",
+                        p = spaces,
+                        x = x,
+                        y = y
+                    ));
+                    draw_time += Duration::from_millis(30);
+                }
                 CodeEmmitals::Sleep(t) => {
-                    code.push_str(&format!("{p}Sleep, {t}\n", t = t, p = spaces))
+                    code.push_str(&format!("{p}Sleep, {t}\n", t = t, p = spaces));
+                    pause_time += Duration::from_millis(*t as u64);
                 }
                 CodeEmmitals::CtrlDown => {
                     code.push_str(&format!("{p}Send {{Ctrl down}}\n", p = spaces))
@@ -533,7 +571,7 @@ impl AhkCode {
                 }
             }
         }
-        code
+        (code, draw_time, pause_time)
     }
 }
 
