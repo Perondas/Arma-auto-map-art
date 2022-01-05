@@ -457,7 +457,7 @@ struct AhkCode {
 }
 
 impl AhkCode {
-    pub fn new(force_single: bool, default_speed: i32) -> AhkCode {
+    pub fn new(force_single: bool, default_speed: u32) -> AhkCode {
         let mut code = Vec::new();
 
         if force_single {
