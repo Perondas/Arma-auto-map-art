@@ -85,8 +85,9 @@ fn main() {
         )
         .arg(
             Arg::with_name("on server")
+                .long("onServer")
                 .short("o")
-                .help("Set this flag if you are going ot be drawing on a server"),
+                .help("Set this flag if you are going to be drawing on a server"),
         )
         .get_matches();
 
