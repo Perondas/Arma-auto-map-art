@@ -22,6 +22,10 @@ Set the following flags:
 * -x \<X OFFSET\> Offset on the x axis. Default 0px
 * -y \<Y OFFSET\> Offset on the y axis. Default 0px
 
+#### Flags:
+* -f Filters out small grains from the file
+* -o Slows down the drawing process to be more compatible with remote servers
+
 I recommend running Arma 3 in borderless window. Run the generated script as administrator. Pressing the ESC key should immediately
 stop the script. Press CTRL + b and tab back into Arma. This will draw a bounding box for the final drawing. Tab back out
 and press CTRL + z, tab back in and let the script draw. If you don´t have enough time to tab back in, change the value in the
