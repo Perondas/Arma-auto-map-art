@@ -370,7 +370,7 @@ fn main() {
                     code.code.push(CodeEmmitals::Sleep(pause));
                 }
                 if server {
-                    // Slowly lift mouse to avoid drawing unwanted lines
+                    // Slowly put down mouse to avoid drawing unwanted lines
                     code.code.push(CodeEmmitals::Sleep(150));
                     code.code.push(CodeEmmitals::MouseDown);
                     code.code.push(CodeEmmitals::Sleep(150));
