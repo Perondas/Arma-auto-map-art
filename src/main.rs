@@ -382,7 +382,7 @@ fn main() {
                 md = true;
             }
 
-            if (last_x - x).abs() + (last_y - y).abs() > 50.0 {
+            if (last_x - x).abs() + (last_y - y).abs() > 15.0 {
                 // Slow down drawing of straight lines
                 code.code.push(CodeEmmitals::Sleep(40));
             }
@@ -436,9 +436,11 @@ fn main() {
         "Total expected time: {:.2} minutes",
         (pause_time + draw_time).as_secs_f64() / 60.0
     );
-    print!("Canvas of size: ");
-    print!("x: {:.2}, ", max_x - min_x);
-    println!("y: {:.2}", max_y - min_y);
+    println!(
+        "Canvas of size: x:{x:.2}, y:{y:.2}",
+        x = max_x - min_x,
+        y = max_y - min_y
+    );
 }
 
 enum CodeEmmitals {

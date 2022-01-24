@@ -39,8 +39,12 @@ To stop the process, hit the escape key.
 
 ## Recommendations:
 * Run Arma 3 in borderless window
-* Set your task manager to [always be on top](https://devblogs.microsoft.com/oldnewthing/20170425-00/?p=96035), as you can get "trapped" in Arma with particularly large images.
+* Set your task manager to [always be on top](https://devblogs.microsoft.com/oldnewthing/20170425-00/?p=96035),
+ as you can get "trapped" in Arma with particularly large images.
 * Use [inkscape](https://inkscape.org/) to generate svg files from bitmaps 
+* There are some issues when parsing SVGs with transforms, so in case of unexpected behavior,
+ use the [applytransforms](https://github.com/Klowner/inkscape-applytransforms) extension in inkscape.
 
 ## Known issues:
-* The [library](https://github.com/Perondas/svg2polylines) used for parsing svg files to polylines seems to have compatibility issues with some svg files.
+* The [library](https://github.com/Perondas/svg2polylines) used for parsing svg files 
+to polylines seems to have compatibility issues with some svg files.
