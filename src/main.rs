@@ -7,7 +7,7 @@ use svg2polylines::*;
 fn main() {
     let matches = App::new("Arma 3 auto map art generator")
         .author("Perondas <Pperondas@gmail.com>")
-        .version("0.1.5")
+        .version("0.1.6")
         .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
             Arg::with_name("source")
@@ -331,18 +331,18 @@ fn main() {
     code = code.add_box(interval, (min_x, min_y), (max_x, max_y));
 
     // Adds the basic structure of the ahk script
-    code.code.push(CodeEmmitals::EmmitLine("^z::".to_string()));
+    code.code.push(CodeEmital::EmitLine("^z::".to_string()));
     code.code
-        .push(CodeEmmitals::EmmitLine("Toggle := !Toggle".to_string()));
-    code.code.push(CodeEmmitals::EmmitLine("Loop".to_string()));
-    code.code.push(CodeEmmitals::EmmitLine("{".to_string()));
-    code.code.push(CodeEmmitals::TabIn);
+        .push(CodeEmital::EmitLine("Toggle := !Toggle".to_string()));
+    code.code.push(CodeEmital::EmitLine("Loop".to_string()));
+    code.code.push(CodeEmital::EmitLine("{".to_string()));
+    code.code.push(CodeEmital::TabIn);
     code.code
-        .push(CodeEmmitals::EmmitLine("If (!Toggle)".to_string()));
-    code.code.push(CodeEmmitals::TabIn);
-    code.code.push(CodeEmmitals::EmmitLine("Break".to_string()));
-    code.code.push(CodeEmmitals::TabOut);
-    code.code.push(CodeEmmitals::Sleep(interval));
+        .push(CodeEmital::EmitLine("If (!Toggle)".to_string()));
+    code.code.push(CodeEmital::TabIn);
+    code.code.push(CodeEmital::EmitLine("Break".to_string()));
+    code.code.push(CodeEmital::TabOut);
+    code.code.push(CodeEmital::Sleep(interval));
 
     let mut last_x = 0.0;
     let mut last_y = 0.0;
@@ -352,7 +352,7 @@ fn main() {
     for poly in polygons {
         // For every polygon press Ctrl
         point_count += poly.len();
-        code.code.push(CodeEmmitals::CtrlDown);
+        code.code.push(CodeEmital::CtrlDown);
 
         // Mouse down flag
         let mut md = false;
@@ -361,22 +361,22 @@ fn main() {
             let x = (l.x * scale) + x_offset;
             let y = (l.y * scale) + y_offset;
             // Move there
-            code.code.push(CodeEmmitals::MouseMove(x, y));
+            code.code.push(CodeEmital::MouseMove(x, y));
 
             if !md {
                 // Mouse down on the first line
-                code.code.push(CodeEmmitals::Sleep(40));
+                code.code.push(CodeEmital::Sleep(40));
                 if (last_x - x).abs() + (last_y - y).abs() < 50.0 {
                     // Pause to avoid opening the marker dialog
-                    code.code.push(CodeEmmitals::Sleep(pause));
+                    code.code.push(CodeEmital::Sleep(pause));
                 }
                 if server {
                     // Slowly put down mouse to avoid drawing unwanted lines
-                    code.code.push(CodeEmmitals::Sleep(150));
-                    code.code.push(CodeEmmitals::MouseDown);
-                    code.code.push(CodeEmmitals::Sleep(150));
+                    code.code.push(CodeEmital::Sleep(150));
+                    code.code.push(CodeEmital::MouseDown);
+                    code.code.push(CodeEmital::Sleep(150));
                 } else {
-                    code.code.push(CodeEmmitals::MouseDown);
+                    code.code.push(CodeEmital::MouseDown);
                 }
 
                 md = true;
@@ -384,7 +384,7 @@ fn main() {
 
             if (last_x - x).abs() + (last_y - y).abs() > 15.0 {
                 // Slow down drawing of straight lines
-                code.code.push(CodeEmmitals::Sleep(40));
+                code.code.push(CodeEmital::Sleep(40));
             }
 
             last_x = x;
@@ -392,24 +392,23 @@ fn main() {
         }
 
         // End of polygon
-        code.code.push(CodeEmmitals::CtrlUp);
-        code.code.push(CodeEmmitals::MouseUp);
+        code.code.push(CodeEmital::CtrlUp);
+        code.code.push(CodeEmital::MouseUp);
         // Wait between polygons
         if server {
-            code.code.push(CodeEmmitals::Sleep(200));
+            code.code.push(CodeEmital::Sleep(200));
         } else {
-            code.code.push(CodeEmmitals::Sleep(40));
+            code.code.push(CodeEmital::Sleep(40));
         }
 
         // Add a blank line for readability
-        code.code.push(CodeEmmitals::EmmitLine(String::new()));
+        code.code.push(CodeEmital::EmitLine(String::new()));
     }
 
     // Kills the loop in the script once it is done, to avoid accidental re-starting
-    code.code
-        .push(CodeEmmitals::EmmitLine("Exit, 0".to_string()));
-    code.code.push(CodeEmmitals::TabOut);
-    code.code.push(CodeEmmitals::EmmitLine("}".to_string()));
+    code.code.push(CodeEmital::EmitLine("Exit, 0".to_string()));
+    code.code.push(CodeEmital::TabOut);
+    code.code.push(CodeEmital::EmitLine("}".to_string()));
 
     // Builds the script and calculates total time spend drawing and all pauses summed up
     let (script, draw_time, pause_time) = code.build();
@@ -443,10 +442,10 @@ fn main() {
     );
 }
 
-enum CodeEmmitals {
+enum CodeEmital {
     TabIn,
     TabOut,
-    EmmitLine(String),
+    EmitLine(String),
     MouseMove(f64, f64),
     Sleep(u32),
     CtrlDown,
@@ -456,7 +455,7 @@ enum CodeEmmitals {
 }
 
 struct AhkCode {
-    code: Vec<CodeEmmitals>,
+    code: Vec<CodeEmital>,
 }
 
 impl AhkCode {
@@ -464,18 +463,16 @@ impl AhkCode {
         let mut code = Vec::new();
 
         if force_single {
-            code.push(CodeEmmitals::EmmitLine("#SingleInstance Force".to_string()));
+            code.push(CodeEmital::EmitLine("#SingleInstance Force".to_string()));
         }
 
-        code.push(CodeEmmitals::EmmitLine(
-            "CoordMode, Mouse, Screen".to_string(),
-        ));
+        code.push(CodeEmital::EmitLine("CoordMode, Mouse, Screen".to_string()));
 
         if default_speed > 100 {
             panic!("Speed was out of range!");
         }
 
-        code.push(CodeEmmitals::EmmitLine(format!(
+        code.push(CodeEmital::EmitLine(format!(
             "SetDefaultMouseSpeed, {}",
             default_speed
         )));
@@ -484,49 +481,44 @@ impl AhkCode {
     }
 
     pub fn add_exit(&mut self) -> &mut AhkCode {
-        self.code
-            .push(CodeEmmitals::EmmitLine("Escape::".to_string()));
-        self.code
-            .push(CodeEmmitals::EmmitLine("ExitApp".to_string()));
-        self.code
-            .push(CodeEmmitals::EmmitLine("Return".to_string()));
+        self.code.push(CodeEmital::EmitLine("Escape::".to_string()));
+        self.code.push(CodeEmital::EmitLine("ExitApp".to_string()));
+        self.code.push(CodeEmital::EmitLine("Return".to_string()));
         self
     }
 
     pub fn add_box(&mut self, pause: u32, min: (f64, f64), max: (f64, f64)) -> &mut AhkCode {
         self.code
-            .push(CodeEmmitals::EmmitLine("^b::Box()".to_string()));
-        self.code
-            .push(CodeEmmitals::EmmitLine("Box() {".to_string()));
-        self.code.push(CodeEmmitals::TabIn);
+            .push(CodeEmital::EmitLine("^b::Box()".to_string()));
+        self.code.push(CodeEmital::EmitLine("Box() {".to_string()));
+        self.code.push(CodeEmital::TabIn);
 
-        self.code.push(CodeEmmitals::Sleep(pause));
-        self.code.push(CodeEmmitals::CtrlDown);
+        self.code.push(CodeEmital::Sleep(pause));
+        self.code.push(CodeEmital::CtrlDown);
 
-        self.code.push(CodeEmmitals::MouseMove(min.0, min.1));
-        self.code.push(CodeEmmitals::Sleep(200));
+        self.code.push(CodeEmital::MouseMove(min.0, min.1));
+        self.code.push(CodeEmital::Sleep(200));
 
-        self.code.push(CodeEmmitals::MouseDown);
+        self.code.push(CodeEmital::MouseDown);
 
-        self.code.push(CodeEmmitals::MouseMove(min.0, max.1));
-        self.code.push(CodeEmmitals::Sleep(200));
+        self.code.push(CodeEmital::MouseMove(min.0, max.1));
+        self.code.push(CodeEmital::Sleep(200));
 
-        self.code.push(CodeEmmitals::MouseMove(max.0, max.1));
-        self.code.push(CodeEmmitals::Sleep(200));
+        self.code.push(CodeEmital::MouseMove(max.0, max.1));
+        self.code.push(CodeEmital::Sleep(200));
 
-        self.code.push(CodeEmmitals::MouseMove(max.0, min.1));
-        self.code.push(CodeEmmitals::Sleep(200));
+        self.code.push(CodeEmital::MouseMove(max.0, min.1));
+        self.code.push(CodeEmital::Sleep(200));
 
-        self.code.push(CodeEmmitals::MouseMove(min.0, min.1));
-        self.code.push(CodeEmmitals::Sleep(200));
+        self.code.push(CodeEmital::MouseMove(min.0, min.1));
+        self.code.push(CodeEmital::Sleep(200));
 
-        self.code.push(CodeEmmitals::CtrlUp);
-        self.code.push(CodeEmmitals::MouseUp);
-        self.code
-            .push(CodeEmmitals::EmmitLine("return".to_string()));
-        self.code.push(CodeEmmitals::TabOut);
+        self.code.push(CodeEmital::CtrlUp);
+        self.code.push(CodeEmital::MouseUp);
+        self.code.push(CodeEmital::EmitLine("return".to_string()));
+        self.code.push(CodeEmital::TabOut);
 
-        self.code.push(CodeEmmitals::EmmitLine("}".to_string()));
+        self.code.push(CodeEmital::EmitLine("}".to_string()));
 
         self
     }
@@ -538,16 +530,14 @@ impl AhkCode {
         let mut draw_time = Duration::new(0, 0);
         for line in &self.code {
             match line {
-                CodeEmmitals::TabIn => spaces.push_str("    "),
-                CodeEmmitals::TabOut => {
+                CodeEmital::TabIn => spaces.push_str("    "),
+                CodeEmital::TabOut => {
                     for _ in 0..4 {
                         spaces.pop();
                     }
                 }
-                CodeEmmitals::EmmitLine(s) => {
-                    code.push_str(&format!("{p}{s}\n", s = s, p = spaces))
-                }
-                CodeEmmitals::MouseMove(x, y) => {
+                CodeEmital::EmitLine(s) => code.push_str(&format!("{p}{s}\n", s = s, p = spaces)),
+                CodeEmital::MouseMove(x, y) => {
                     code.push_str(&format!(
                         "{p}MouseMove, {x}, {y}\n",
                         p = spaces,
@@ -556,20 +546,18 @@ impl AhkCode {
                     ));
                     draw_time += Duration::from_millis(30);
                 }
-                CodeEmmitals::Sleep(t) => {
+                CodeEmital::Sleep(t) => {
                     code.push_str(&format!("{p}Sleep, {t}\n", t = t, p = spaces));
                     pause_time += Duration::from_millis(*t as u64);
                 }
-                CodeEmmitals::CtrlDown => {
+                CodeEmital::CtrlDown => {
                     code.push_str(&format!("{p}Send {{Ctrl down}}\n", p = spaces))
                 }
-                CodeEmmitals::CtrlUp => {
-                    code.push_str(&format!("{p}Send {{Ctrl up}}\n", p = spaces))
-                }
-                CodeEmmitals::MouseUp => {
+                CodeEmital::CtrlUp => code.push_str(&format!("{p}Send {{Ctrl up}}\n", p = spaces)),
+                CodeEmital::MouseUp => {
                     code.push_str(&format!("{p}Send {{lbutton up}}\n", p = spaces))
                 }
-                CodeEmmitals::MouseDown => {
+                CodeEmital::MouseDown => {
                     code.push_str(&format!("{p}Send {{lbutton down}}\n", p = spaces))
                 }
             }
