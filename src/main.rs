@@ -7,7 +7,7 @@ use svg2polylines::*;
 fn main() {
     let matches = App::new("Arma 3 auto map art generator")
         .author("Perondas <Pperondas@gmail.com>")
-        .version("0.1.6")
+        .version("0.1.7")
         .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
             Arg::with_name("source")
@@ -135,7 +135,7 @@ fn main() {
         None => {
             if !test {
                 println!("No source file provided");
-                source = "E:/Git/Arma-auto-map-art/arcs.svg";
+                return;
             } else {
                 source = "test.svg"
             }
