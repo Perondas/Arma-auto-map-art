@@ -7,7 +7,7 @@ use svg2polylines::*;
 fn main() {
     let matches = Command::new("Arma 3 auto map art generator")
         .author("Perondas <Pperondas@gmail.com>")
-        .version("0.1.7")
+        .version("0.1.8")
         .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
             Arg::new("source")
