@@ -8,5 +8,5 @@ authors = ["Perondas"]
 
 [dependencies]
 svg2polylines = {git = "https://github.com/Perondas/svg2polylines.git"}
-clap = "2.33.3"
+clap = "3.1.12"
 rand = "0.8.4"

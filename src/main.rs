@@ -5,88 +5,88 @@ use std::time::Duration;
 use svg2polylines::*;
 
 fn main() {
-    let matches = App::new("Arma 3 auto map art generator")
+    let matches = Command::new("Arma 3 auto map art generator")
         .author("Perondas <Pperondas@gmail.com>")
         .version("0.1.7")
         .about("Generates Ahk scripts from svg files to draw on the Arma 3 map screen")
         .arg(
-            Arg::with_name("source")
-                .short("s")
+            Arg::new("source")
+                .short('s')
                 .takes_value(true)
                 .value_name("SOURCE FILE")
                 .help("Path to the source svg file"),
         )
         .arg(
-            Arg::with_name("destination")
-                .short("d")
+            Arg::new("destination")
+                .short('d')
                 .takes_value(true)
                 .value_name("DESTINATION PATH")
                 .help("Path to the destination file"),
         )
         .arg(
-            Arg::with_name("scale")
-                .short("c")
+            Arg::new("scale")
+                .short('s')
                 .takes_value(true)
                 .value_name("SCALE")
                 .help("Sets the scale of the drawing")
                 .default_value("1.0"),
         )
         .arg(
-            Arg::with_name("grain")
-                .short("g")
+            Arg::new("grain")
+                .short('g')
                 .takes_value(true)
                 .value_name("GRAIN LEVEL")
                 .help("Sets how fine to draw. Higher values make it more course")
                 .default_value("0.15"),
         )
         .arg(
-            Arg::with_name("xOffset")
-                .short("x")
+            Arg::new("xOffset")
+                .short('x')
                 .takes_value(true)
                 .value_name("X OFFSET")
                 .help("Drawing offset on x axis")
                 .default_value("0"),
         )
         .arg(
-            Arg::with_name("yOffset")
-                .short("y")
+            Arg::new("yOffset")
+                .short('y')
                 .takes_value(true)
                 .value_name("Y OFFSET")
                 .help("Drawing offset on y axis")
                 .default_value("0"),
         )
         .arg(
-            Arg::with_name("pause")
-                .short("p")
+            Arg::new("pause")
+                .short('p')
                 .takes_value(true)
                 .value_name("PAUSE DURATION")
                 .help("Time to wait in between drawing 2 close lines to prevent marker dialogue")
                 .default_value("750"),
         )
         .arg(
-            Arg::with_name("startingInterval")
-                .short("i")
+            Arg::new("startingInterval")
+                .short('i')
                 .takes_value(true)
                 .value_name("STARTING INTERVAL")
                 .help("The time between pressing a key and the drawing process starting")
                 .default_value("3000"),
         )
         .arg(
-            Arg::with_name("test")
-                .short("t")
+            Arg::new("test")
+                .short('t')
                 .long("test")
                 .help("Outputs a test file"),
         )
         .arg(
-            Arg::with_name("filter")
-                .short("f")
+            Arg::new("filter")
+                .short('f')
                 .long("filter")
                 .help("Filters out small specks"),
         )
         .arg(
-            Arg::with_name("on server")
+            Arg::new("on server")
                 .long("onServer")
-                .short("o")
+                .short('o')
                 .help("Set this flag if you are going to be drawing on a server"),
         )
         .get_matches();
